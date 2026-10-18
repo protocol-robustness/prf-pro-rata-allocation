@@ -48,10 +48,10 @@ classpath):
 clojure -M:test -m prf.canonical.test-runner
 ```
 
-Run Rust conformance tests from the package root:
+Run Rust conformance tests from this repository root:
 
 ```sh
-cargo test --offline --manifest-path rust/Cargo.toml
+cargo test -p prf-canonical-codec --locked --offline
 ```
 
 ## Candidate bundle

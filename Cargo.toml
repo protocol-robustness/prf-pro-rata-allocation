@@ -1,0 +1,3 @@
+[workspace]
+members = ["canonical/rust", "rust"]
+resolver = "2"

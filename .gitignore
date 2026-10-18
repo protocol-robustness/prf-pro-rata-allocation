@@ -1,2 +1,4 @@
 /clj/.cpcache/
+/target/
 /rust/target/
+/canonical/rust/target/

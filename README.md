@@ -25,8 +25,12 @@ From the repository root:
 
 ```sh
 (cd clj && clojure -M:conformance)
-cargo test --offline --manifest-path rust/Cargo.toml
+cargo test --workspace --locked --offline
 ```
+
+The root Cargo workspace makes the Rust crate addressable as a Git dependency
+at a pinned repository revision while retaining the canonical codec as an
+explicit workspace member.
 
 The checked-in release metadata records partial overall conformance. Rust V1 allocation tests are qualified in the source candidate; additional proof-verifier and production Solidity profiles remain outside this package qualification.
 
