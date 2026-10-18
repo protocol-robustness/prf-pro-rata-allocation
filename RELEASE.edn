@@ -7,12 +7,12 @@
                                  {:lib prf/canonical
                                   :version "0.1.0-rc.1"
                                   :git/url "https://github.com/protocol-robustness/prf-canonical.git"
-                                  :git/sha "d87008bc5ba852171eed13032e4e80a0502b7252"
+                                  :git/sha "5e2b520feca812b049ba397b7b3681963c66a48c"
                                   :deps/root "clj"}]
  :release/rust-dependencies [{:lib prf-canonical-codec
                               :version "0.1.0-rc.1"
                               :git/url "https://github.com/protocol-robustness/prf-canonical.git"
-                              :git/sha "d87008bc5ba852171eed13032e4e80a0502b7252"}]
+                              :git/sha "5e2b520feca812b049ba397b7b3681963c66a48c"}]
  :release/conformance {:status :partial
                        :command "clojure -M:conformance"
                        :tests 8

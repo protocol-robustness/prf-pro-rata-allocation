@@ -2,7 +2,7 @@
 
 This is a standalone repository candidate for the deterministic pro-rata allocation package. It contains the Clojure and Rust implementations, package-owned fixtures, the frozen portable V1 allocation contract, and pins the shared `prf-canonical` package.
 
-The allocation candidate is source-qualified at revision `e15501efc04254defd85cdd8e5f4dc4ffd5b1805`; this does not promote release qualification. The canonical codec dependency is pinned to `prf-canonical` revision `d87008bc5ba852171eed13032e4e80a0502b7252`.
+The allocation candidate is source-qualified at revision `e15501efc04254defd85cdd8e5f4dc4ffd5b1805`; this does not promote release qualification. The canonical codec dependency is pinned to `prf-canonical` revision `5e2b520feca812b049ba397b7b3681963c66a48c`.
 
 ## Scope
 

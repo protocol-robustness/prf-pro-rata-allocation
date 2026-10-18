@@ -105,7 +105,7 @@ dependencies = [
 [[package]]
 name = "prf-canonical-codec"
 version = "0.1.0-rc.1"
-source = "git+https://github.com/protocol-robustness/prf-canonical.git?rev=d87008bc5ba852171eed13032e4e80a0502b7252#d87008bc5ba852171eed13032e4e80a0502b7252"
+source = "git+https://github.com/protocol-robustness/prf-canonical.git?rev=5e2b520feca812b049ba397b7b3681963c66a48c#5e2b520feca812b049ba397b7b3681963c66a48c"
 dependencies = [
  "hex",
  "num-bigint",
