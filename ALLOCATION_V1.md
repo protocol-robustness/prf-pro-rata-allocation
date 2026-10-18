@@ -11,18 +11,30 @@ encoding remains owned by `canonical` and follows
 
 ### 4.1 Input and domains
 
-A v1 request MUST contain the fields declared in `contract.edn`. `available`,
-`requested`, `weight`, and non-null `cap` MUST be non-negative
+A normalized v1 request MUST contain the fields declared in `contract.edn`.
+Raw Clojure and Rust inputs are normalized first. `allocation/id`, `available`,
+`rows`, and each row's `row/id`, `requested`, and `weight` are required.
+`available`, `requested`, `weight`, and non-null `cap` MUST be non-negative
 arbitrary-precision integers. Row IDs MUST be canonical values and unique.
 `obligation/id` is carried as identity evidence and does not merge rows.
+
+The normalizers default missing or null schema version, mechanism version,
+rounding, tie-break, and redistribution policy to the V1 values
+`pro-rata-allocation-request.v1`, `1`, `:largest-remainder`,
+`:canonical-row-id`, and `:unallocated`. Missing or null `cap` is absent, and
+missing or null `obligation/id` becomes nil. Unknown keys in Clojure row maps
+and unrecognized request keys are ignored and omitted from the canonical
+request. Invalid known fields and unsupported explicit versions or policies
+are rejected. The normalized canonical request itself has the closed shape
+specified in `contract.edn`; callers requiring rejection of unknown raw input
+keys must validate those keys before normalization.
 
 Rows MUST be normalized by converting all integer widths to mathematical
 integers, setting `effective-cap = min(requested, cap)` when cap exists and
 `effective-cap = requested` otherwise, then ordering by the unsigned canonical
 bytes of `row/id`.
 
-No semantic default is permitted. Rounding, tie-break, and redistribution policy
-MUST be explicit. V1 supports the values in `contract.edn` only.
+V1 supports only the policy values in `contract.edn` after normalization.
 
 ### 4.2 Quotas and rounding
 

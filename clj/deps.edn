@@ -1,5 +1,7 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.12.0"}
-        prf/canonical {:local/root "../canonical/clj"}}
+        prf/canonical {:git/url "https://github.com/protocol-robustness/prf-canonical.git"
+                       :git/sha "d87008bc5ba852171eed13032e4e80a0502b7252"
+                       :deps/root "clj"}}
  :aliases {:conformance {:extra-paths ["test"]
                          :main-opts ["-m" "prf.pro-rata.conformance-runner"]}}}

@@ -84,18 +84,35 @@ representation and is not part of the 64-hex digest.
 
 ### 4.1 Input and domains
 
-A v1 request MUST contain the fields declared in `contract.edn`. `available`,
-`requested`, `weight`, and non-null `cap` MUST be non-negative
-arbitrary-precision integers. Row IDs MUST be canonical values and unique.
+A normalized v1 request MUST contain the fields declared in `contract.edn`.
+The Clojure and Rust public normalizers accept raw input and construct that
+normalized request before allocation. `allocation/id`, `available`, `rows`,
+each row's `row/id`, `requested`, and `weight` are required. `available`,
+`requested`, `weight`, and non-null `cap` MUST be non-negative arbitrary-
+precision integers. Row IDs MUST be canonical values and unique.
 `obligation/id` is carried as identity evidence and does not merge rows.
+
+Raw normalization supplies the frozen V1 defaults when schema version,
+mechanism version, rounding policy, tie-break policy, or redistribution policy
+is absent or null: `pro-rata-allocation-request.v1`, `1`,
+`:largest-remainder`, `:canonical-row-id`, and `:unallocated` respectively.
+The normalizer rejects unsupported explicit values and invalid required values.
+An omitted or null `cap` becomes absent; an omitted or null `obligation/id`
+becomes nil. Integer widths normalize to mathematical integers. Clojure input
+maps are open: unknown row keys (and unknown request keys outside recognized
+operational options) are ignored and are not copied into the canonical request.
+The Rust typed input has the same supported fields; unknown serialized fields
+are outside that typed API. This describes raw normalization behavior and does
+not change the closed, required-field shape of the normalized canonical
+request or result. Callers that need closed raw-map validation must check it
+before invoking `allocate`.
 
 Rows MUST be normalized by converting all integer widths to mathematical
 integers, setting `effective-cap = min(requested, cap)` when cap exists and
 `effective-cap = requested` otherwise, then ordering by the unsigned canonical
 bytes of `row/id`.
 
-No semantic default is permitted. Rounding, tie-break, and redistribution policy
-MUST be explicit. V1 supports the values in `contract.edn` only.
+After normalization, V1 supports only the policy values in `contract.edn`.
 
 ### 4.2 Quotas and rounding
 
