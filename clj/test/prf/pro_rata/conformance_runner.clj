@@ -204,7 +204,7 @@
 
 (defn -main
   [& [fixture-root]]
-  (let [fixture-root (io/file (or fixture-root "test/fixtures/portable-pro-rata-contract"))]
+  (let [fixture-root (io/file (or fixture-root "resources/prf/pro_rata/fixtures/portable-pro-rata-contract"))]
     (when-not (.isDirectory fixture-root)
       (throw (ex-info "Portable contract fixture directory not found"
                       {:fixture-root (.getPath fixture-root)})))
