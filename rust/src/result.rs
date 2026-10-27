@@ -294,16 +294,39 @@ mod tests {
     use crate::witness::build_witness;
 
     fn row(id: &str, obligation: &str, requested: i64, cap: Option<i64>) -> AllocationRowInput {
+        row_with_weight(id, obligation, requested, 1, cap)
+    }
+
+    fn row_with_weight(
+        id: &str,
+        obligation: &str,
+        requested: i64,
+        weight: i64,
+        cap: Option<i64>,
+    ) -> AllocationRowInput {
         AllocationRowInput {
             row_id: Some(CanonValue::keyword(id)),
             obligation_id: Some(CanonValue::keyword(obligation)),
             requested: Some(CanonValue::int(requested)),
-            weight: Some(CanonValue::int(1)),
+            weight: Some(CanonValue::int(weight)),
             cap: cap.map(CanonValue::int),
         }
     }
 
+    fn report_vector(vector_id: &str, request_root: &str, result_root: &str) {
+        if std::env::var_os("PRF_VECTOR_DRIFT").is_some() {
+            println!("PRF_VECTOR_DRIFT_V1|allocation|{vector_id}|{request_root}|{result_root}");
+        }
+    }
+
+    fn report_rejection(vector_id: &str, reason: &str) {
+        if std::env::var_os("PRF_VECTOR_DRIFT").is_some() {
+            println!("PRF_VECTOR_DRIFT_V1|allocation-rejection|{vector_id}|{reason}");
+        }
+    }
+
     fn check_vector(
+        vector_id: &str,
         allocation_id: &str,
         available: i64,
         rounding: &str,
@@ -327,11 +350,13 @@ mod tests {
         let witness = build_witness(&request);
         let result = assemble_result(&request, &request_root, &allocation, &witness);
         assert_eq!(result.root, expected_root);
+        report_vector(vector_id, &request_root, &result.root);
     }
 
     #[test]
     fn result_roots_match_frozen_allocation_vectors() {
         check_vector(
+            "allocation-rounding-001",
             "portable/rounding",
             5,
             "largest-remainder",
@@ -340,6 +365,7 @@ mod tests {
             "7ca6b7b57766a0c2ec92058f0a6fcbc2ff23c01de93904593839d8a449a48454",
         );
         check_vector(
+            "cap-clamping-001",
             "cap-clamping-001",
             10,
             "largest-remainder",
@@ -352,6 +378,7 @@ mod tests {
         );
         check_vector(
             "redistribute-cap-excess-001",
+            "redistribute-cap-excess-001",
             10,
             "largest-remainder",
             "redistribute-cap-excess",
@@ -363,12 +390,40 @@ mod tests {
         );
         check_vector(
             "floor-residual-001",
+            "floor-residual-001",
             5,
             "floor",
             "unallocated",
             vec![row("row/b", "ob/b", 5, None), row("row/a", "ob/a", 5, None)],
             "cddb502c6577a1742c029de2f1bfe1e6ef8dedc8491f870c5935c228edab12b8",
         );
+    }
+
+    #[test]
+    fn zero_weight_result_root_matches_frozen_vector() {
+        let request = normalize_request(&AllocationRequestInput {
+            allocation_id: Some(keyword("zero-weight-001")),
+            schema_version: None,
+            mechanism_version: None,
+            available: Some(CanonValue::int(5)),
+            rows: vec![
+                row_with_weight("row/b", "ob/b", 5, 0, None),
+                row_with_weight("row/a", "ob/a", 5, 0, None),
+            ],
+            rounding_policy: Some(keyword("largest-remainder")),
+            tie_break_policy: Some(keyword("canonical-row-id")),
+            redistribution_policy: Some(keyword("unallocated")),
+        })
+        .unwrap();
+        let request_root = allocation_request_root(&request.canonical_request);
+        let allocation = allocate_normalized(&request);
+        let witness = build_witness(&request);
+        let result = assemble_result(&request, &request_root, &allocation, &witness);
+        assert_eq!(
+            result.root,
+            "ac16e38133a775a13c412ed451d311bd8754ae364a600b0d96d64e804f70685d"
+        );
+        report_vector("zero-weight-001", &request_root, &result.root);
     }
 
     #[test]
@@ -529,6 +584,7 @@ mod tests {
             verify_result(&request, &reordered),
             Err(ResultVerificationError)
         );
+        report_rejection("canonical-row-order-disagreement", "projection-mismatch");
 
         // :cap-mutation (:row/id :row/a, :effective-cap 3)
         let mutated_rows = rows
@@ -546,6 +602,7 @@ mod tests {
             verify_result(&request, &cap_mutation),
             Err(ResultVerificationError)
         );
+        report_rejection("cap-mutation", "projection-mismatch");
 
         // :redistribution-witness-mutation
         let changed_round = CanonValue::map(vec![
@@ -561,6 +618,7 @@ mod tests {
             verify_result(&request, &witness_mutation),
             Err(ResultVerificationError)
         );
+        report_rejection("redistribution-witness-mutation", "projection-mismatch");
 
         // :malformed-allocation-witness
         let malformed_round = CanonValue::map(vec![
@@ -579,6 +637,7 @@ mod tests {
             verify_result(&request, &malformed_witness),
             Err(ResultVerificationError)
         );
+        report_rejection("malformed-allocation-witness", "projection-mismatch");
     }
 
     #[test]
@@ -597,6 +656,7 @@ mod tests {
             normalize_request(&duplicate),
             Err(crate::request::RequestNormalizationError::DuplicateRowId)
         );
+        report_rejection("duplicate-row-identity", "malformed-input");
 
         duplicate.rows = vec![row("row/a", "ob/a", 10, Some(2))];
         duplicate.tie_break_policy = Some(keyword("input-order"));
@@ -604,5 +664,6 @@ mod tests {
             normalize_request(&duplicate),
             Err(crate::request::RequestNormalizationError::UnsupportedTieBreakPolicy)
         );
+        report_rejection("policy-substitution", "unknown-policy");
     }
 }
