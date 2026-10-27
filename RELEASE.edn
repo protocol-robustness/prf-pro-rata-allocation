@@ -23,11 +23,11 @@
                        :canonical-registry-identity-baseline
                        "e0e33c5ab0f976df2be635124dbc7c0a0bea1619b31af6f3a8d787a3da3c366e"
                        :rust {:command "cargo test --workspace --locked"
-                              :tests 52
+                              :tests 53
                               :result :passed}}
  :release/profile-qualification
  {:rust-allocation-v1 {:status :passed
-                       :tests 42
+                       :tests 43
                        :scope :package-local-arithmetic-request-witness-and-result}
   :solidity-execution-consumer-v1-v2
   {:status :local-tests-passed-unpinned
