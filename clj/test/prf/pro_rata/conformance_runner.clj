@@ -6,6 +6,7 @@
             [clojure.test :as test :refer [deftest]]
             [prf.canonical.codec :as codec]
             [prf.pro-rata.api :as api]
+            [prf.pro-rata.deployment-scoped-claim-test]
             [prf.pro-rata.identity :as identity]
             [prf.pro-rata.outcome :as outcome]
             [prf.pro-rata.realized-statement :as realized-statement]
@@ -209,6 +210,7 @@
       (throw (ex-info "Portable contract fixture directory not found"
                       {:fixture-root (.getPath fixture-root)})))
     (binding [*fixture-root* fixture-root]
-      (let [summary (test/run-tests 'prf.pro-rata.conformance-runner)]
+      (let [summary (test/run-tests 'prf.pro-rata.conformance-runner
+                                    'prf.pro-rata.deployment-scoped-claim-test)]
         (shutdown-agents)
         (System/exit (if (zero? (+ (:fail summary) (:error summary))) 0 1))))))

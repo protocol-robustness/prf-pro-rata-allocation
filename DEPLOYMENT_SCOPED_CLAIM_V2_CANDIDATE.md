@@ -1,0 +1,63 @@
+# Deployment-scoped entitlement claim V2 — candidate
+
+**Status: candidate, not adopted.** This profile is an interoperability proposal
+for the independent `prf-pro-rata-evm` implementation. It does not modify the
+frozen allocation V1 identities or claim that the supplied chain-instance
+identity is authenticated. Adoption requires semantic-owner review, a decision
+on chain-instance authentication, and approval of these exact preimages and
+vectors.
+
+## Encoding
+
+The current candidate uses Ethereum `keccak256(abi.encode(...))`. All fields
+below are static ABI words. Domain strings are converted to `bytes32` with
+`keccak256(UTF-8(domain))`. Addresses are left-padded to 32 bytes; unsigned
+integers are 32-byte big-endian ABI words. Values outside `uint256` and proof
+modes other than `0` (Requested) or `1` (Required) are rejected.
+
+The table leaf preimage, in order, is:
+
+1. `keccak256("prf.pro-rata-entitlement.deployment-scoped.v2")`
+2. `keccak256("prf.pro-rata-entitlement.table-leaf.v2")`
+3. chain ID
+4. chain-instance identity
+5. effective allocator address
+6. asset address
+7. operation ID
+8. allocation binding root
+9. entitlement index
+10. claim identity
+11. beneficiary
+12. amount in base units
+13. policy profile
+14. immutable minimum proof mode
+15. opening salt
+
+The allocation-claim leaf uses the same ordered fields and the
+`prf.pro-rata-entitlement.claim-leaf.v2` domain, but excludes the opening salt.
+This distinction is intentional: membership opening and claim identity are
+separate commitments.
+
+Merkle nodes are `keccak256(node-domain || left || right)` over three 32-byte
+words. Child order is significant; an odd final node is paired with itself.
+Table and allocation-claim roots wrap the member root, entitlement count and
+total amount with their respective `table-root.v2` and `claim-root.v2` domains.
+
+## Trust boundary still unresolved
+
+The candidate commits to chain ID, allocator address and a chain-instance
+identity supplied at construction. Hashing that supplied value does not prove
+it was authenticated or selected by the correct authority. The local EVM
+candidate also binds its actual `address(this)` at execution, while the
+cross-language fixture uses an explicit allocator value to test the preimage.
+No deployment qualification follows from matching these vectors.
+
+## Candidate vector and reproduction
+
+The machine-readable vector shared by Clojure and Rust tests is
+`clj/test/fixtures/deployment-scoped-entitlement-v2.candidate.properties`.
+The EVM candidate keeps its corresponding JSON input fixture. Rust and Clojure
+independently derive the leaves and root envelopes and compare against the
+shared values; the EVM test independently anchors those values with Foundry
+`cast` encoding/hash results. The candidate fixture is test material only and
+is excluded from the existing allocation release manifest.

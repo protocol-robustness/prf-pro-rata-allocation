@@ -18,6 +18,7 @@ V1 and successor allocation profiles must keep their existing schema versions an
 - `SPEC.md`, `contract.edn`, and `ALLOCATION_V1.md`: frozen portable contract and allocation profile.
 - `CANONICAL_HASH_SPEC_V1_BINARY_ENCODING_ABI.md`: canonical byte encoding contract.
 - `PROTECTED_CAPITAL_PRO_RATA_V2_SEMANTICS.md`: upstream application semantics reference; it does not make V2 custody semantics part of this allocation package.
+- `DEPLOYMENT_SCOPED_CLAIM_V2_CANDIDATE.md`: explicitly unadopted candidate for the independent EVM entitlement profile; it does not change existing V1 identities or release status.
 
 ## Local verification commands
 
