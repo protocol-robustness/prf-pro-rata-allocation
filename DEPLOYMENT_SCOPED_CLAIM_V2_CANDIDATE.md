@@ -61,8 +61,10 @@ qualify a deployment.
 
 The machine-readable vector shared by Clojure and Rust tests is
 `clj/test/fixtures/deployment-scoped-entitlement-v2.candidate.properties`.
-The EVM candidate keeps its corresponding JSON input fixture. Rust and Clojure
-independently derive the leaves and root envelopes and compare against the
-shared values; the EVM test independently anchors those values with Foundry
-`cast` encoding/hash results. The candidate fixture is test material only and
-is excluded from the existing allocation release manifest.
+The EVM candidate keeps its corresponding JSON input fixture. All three
+implementations independently derive the three-member leaves, ordered pair,
+duplicated final node, member roots, root envelopes and index-2 sibling paths,
+and compare them with the same golden values. The candidate fixture is test
+material only and is excluded from the existing allocation release manifest.
+This reproduces the proposed encoding; it does not itself adopt the profile or
+authenticate the genesis-root input.

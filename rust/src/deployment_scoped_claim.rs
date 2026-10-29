@@ -285,6 +285,117 @@ mod tests {
     }
 
     #[test]
+    fn candidate_odd_width_vector_matches_shared_golden_roots_and_proof() {
+        let properties = vector_properties();
+        let value = |key: String| {
+            properties
+                .get(key.as_str())
+                .copied()
+                .unwrap_or_else(|| panic!("candidate vector field {key}"))
+        };
+        let expected = |key: String| value(key).trim_start_matches("0x").to_owned();
+        let (context, _) = candidate_vector();
+        let openings: Vec<EntitlementOpeningV2> = (0..3)
+            .map(|index| {
+                let prefix = format!("odd_width.opening.{index}");
+                EntitlementOpeningV2 {
+                    index: BigUint::from(value(format!("{prefix}.index")).parse::<u32>().unwrap()),
+                    claim_identity: bytes32(value(format!("{prefix}.claim_identity"))),
+                    beneficiary: address(value(format!("{prefix}.beneficiary"))),
+                    amount_base_units: BigUint::from(
+                        value(format!("{prefix}.amount_base_units")).parse::<u32>().unwrap(),
+                    ),
+                    opening_salt: bytes32(value(format!("{prefix}.opening_salt"))),
+                }
+            })
+            .collect();
+        let table_leaves: Vec<[u8; 32]> = openings
+            .iter()
+            .map(|opening| entitlement_table_leaf_v2(&context, opening).unwrap())
+            .collect();
+        let claim_leaves: Vec<[u8; 32]> = openings
+            .iter()
+            .map(|opening| allocation_claim_leaf_v2(&context, opening).unwrap())
+            .collect();
+        let table_pair = ordered_tree_root_v2(&table_leaves[..2], TABLE_NODE_DOMAIN).unwrap();
+        let table_duplicate_last =
+            ordered_tree_root_v2(&[table_leaves[2], table_leaves[2]], TABLE_NODE_DOMAIN).unwrap();
+        let table_members_root = ordered_tree_root_v2(&table_leaves, TABLE_NODE_DOMAIN).unwrap();
+        let claim_pair = ordered_tree_root_v2(&claim_leaves[..2], CLAIM_NODE_DOMAIN).unwrap();
+        let claim_duplicate_last =
+            ordered_tree_root_v2(&[claim_leaves[2], claim_leaves[2]], CLAIM_NODE_DOMAIN).unwrap();
+        let claim_members_root = ordered_tree_root_v2(&claim_leaves, CLAIM_NODE_DOMAIN).unwrap();
+        let count = BigUint::from(value("odd_width.count".to_owned()).parse::<u32>().unwrap());
+        let total = BigUint::from(
+            value("odd_width.total_amount_base_units".to_owned())
+                .parse::<u32>()
+                .unwrap(),
+        );
+
+        let hexes = |values: &[[u8; 32]]| values.iter().map(hex::encode).collect::<Vec<_>>();
+        assert_eq!(
+            hexes(&table_leaves),
+            (0..3)
+                .map(|index| expected(format!("expected.odd_width.entitlement_leaf.{index}")))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            hexes(&claim_leaves),
+            (0..3)
+                .map(|index| expected(format!("expected.odd_width.allocation_claim_leaf.{index}")))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            hex::encode(table_pair),
+            expected("expected.odd_width.entitlement_pair.01".to_owned())
+        );
+        assert_eq!(
+            hex::encode(table_duplicate_last),
+            expected("expected.odd_width.entitlement_duplicate_last_node".to_owned())
+        );
+        assert_eq!(
+            hex::encode(table_members_root),
+            expected("expected.odd_width.entitlement_members_root".to_owned())
+        );
+        assert_eq!(
+            hex::encode(entitlement_table_root_v2(&table_members_root, &count, &total).unwrap()),
+            expected("expected.odd_width.entitlement_table_root".to_owned())
+        );
+        assert_eq!(
+            hex::encode(claim_pair),
+            expected("expected.odd_width.allocation_claim_pair.01".to_owned())
+        );
+        assert_eq!(
+            hex::encode(claim_duplicate_last),
+            expected("expected.odd_width.allocation_claim_duplicate_last_node".to_owned())
+        );
+        assert_eq!(
+            hex::encode(claim_members_root),
+            expected("expected.odd_width.allocation_claim_members_root".to_owned())
+        );
+        assert_eq!(
+            hex::encode(allocation_claim_root_v2(&claim_members_root, &count, &total).unwrap()),
+            expected("expected.odd_width.allocation_claim_root".to_owned())
+        );
+        assert_eq!(
+            hex::encode(table_leaves[2]),
+            expected("expected.odd_width.index_2_entitlement_sibling.0".to_owned())
+        );
+        assert_eq!(
+            hex::encode(table_pair),
+            expected("expected.odd_width.index_2_entitlement_sibling.1".to_owned())
+        );
+        assert_eq!(
+            hex::encode(claim_leaves[2]),
+            expected("expected.odd_width.index_2_allocation_claim_sibling.0".to_owned())
+        );
+        assert_eq!(
+            hex::encode(claim_pair),
+            expected("expected.odd_width.index_2_allocation_claim_sibling.1".to_owned())
+        );
+    }
+
+    #[test]
     fn out_of_range_uint_and_unknown_mode_fail_closed() {
         let (mut context, opening) = candidate_vector();
         context.chain_id = BigUint::from(1u8) << 256usize;

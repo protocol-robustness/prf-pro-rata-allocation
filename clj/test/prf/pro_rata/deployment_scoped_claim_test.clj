@@ -26,7 +26,33 @@
                   :entitlement-table-root (getv "expected.entitlement_table_root")
                   :allocation-claim-leaf (getv "expected.allocation_claim_leaf")
                   :allocation-claim-root (getv "expected.allocation_claim_root")
-                  :two-leaf-table-node-root (getv "expected.two_leaf_table_node_root")}})))
+                  :two-leaf-table-node-root (getv "expected.two_leaf_table_node_root")}
+       :odd-width {:count (Long/parseLong (getv "odd_width.count"))
+                   :total-amount-base-units (Long/parseLong (getv "odd_width.total_amount_base_units"))
+                   :openings (mapv (fn [index]
+                                     {:index (Long/parseLong (getv (str "odd_width.opening." index ".index")))
+                                      :claim-identity (getv (str "odd_width.opening." index ".claim_identity"))
+                                      :beneficiary (getv (str "odd_width.opening." index ".beneficiary"))
+                                      :amount-base-units (Long/parseLong
+                                                          (getv (str "odd_width.opening." index ".amount_base_units")))
+                                      :opening-salt (getv (str "odd_width.opening." index ".opening_salt"))})
+                                   (range 3))
+                   :expected {:table-leaves (mapv #(getv (str "expected.odd_width.entitlement_leaf." %))
+                                                  (range 3))
+                              :table-pair (getv "expected.odd_width.entitlement_pair.01")
+                              :table-duplicate-last-node (getv "expected.odd_width.entitlement_duplicate_last_node")
+                              :table-members-root (getv "expected.odd_width.entitlement_members_root")
+                              :table-root (getv "expected.odd_width.entitlement_table_root")
+                              :claim-leaves (mapv #(getv (str "expected.odd_width.allocation_claim_leaf." %))
+                                                  (range 3))
+                              :claim-pair (getv "expected.odd_width.allocation_claim_pair.01")
+                              :claim-duplicate-last-node (getv "expected.odd_width.allocation_claim_duplicate_last_node")
+                              :claim-members-root (getv "expected.odd_width.allocation_claim_members_root")
+                              :claim-root (getv "expected.odd_width.allocation_claim_root")
+                              :table-index-2-siblings (mapv #(getv (str "expected.odd_width.index_2_entitlement_sibling." %))
+                                                            (range 2))
+                              :claim-index-2-siblings (mapv #(getv (str "expected.odd_width.index_2_allocation_claim_sibling." %))
+                                                            (range 2))}}})))
 
 (defn- failure-reason [f]
   (try (f)
@@ -141,3 +167,39 @@
                                 [left right] claim/table-node-domain))
               (claim/bytes->hex (claim/ordered-tree-root-v2
                                 [left right] claim/claim-node-domain))))))
+
+(deftest candidate-odd-width-vector-matches-shared-golden-roots-and-proof
+  (let [{:keys [inputs odd-width]} (vector-data)
+        context (select-keys inputs [:chain-id :chain-instance-genesis-root :allocator :asset
+                                     :operation-id :allocation-binding-root :policy-profile
+                                     :immutable-minimum-proof-mode])
+        openings (:openings odd-width)
+        table-leaves (mapv #(claim/entitlement-table-leaf-v2 context %) openings)
+        claim-leaves (mapv #(claim/allocation-claim-leaf-v2 context %) openings)
+        table-pair (claim/ordered-tree-root-v2 (subvec table-leaves 0 2) claim/table-node-domain)
+        table-duplicate-last (claim/ordered-tree-root-v2 [(nth table-leaves 2) (nth table-leaves 2)]
+                                                         claim/table-node-domain)
+        table-members-root (claim/ordered-tree-root-v2 table-leaves claim/table-node-domain)
+        table-root (claim/entitlement-table-root-v2 table-members-root
+                                                   (:count odd-width) (:total-amount-base-units odd-width))
+        claim-pair (claim/ordered-tree-root-v2 (subvec claim-leaves 0 2) claim/claim-node-domain)
+        claim-duplicate-last (claim/ordered-tree-root-v2 [(nth claim-leaves 2) (nth claim-leaves 2)]
+                                                         claim/claim-node-domain)
+        claim-members-root (claim/ordered-tree-root-v2 claim-leaves claim/claim-node-domain)
+        claim-root (claim/allocation-claim-root-v2 claim-members-root
+                                                  (:count odd-width) (:total-amount-base-units odd-width))
+        expected (:expected odd-width)]
+    (is (= (:table-leaves expected) (mapv claim/bytes->hex table-leaves)))
+    (is (= (:claim-leaves expected) (mapv claim/bytes->hex claim-leaves)))
+    (is (= (:table-pair expected) (claim/bytes->hex table-pair)))
+    (is (= (:table-duplicate-last-node expected) (claim/bytes->hex table-duplicate-last)))
+    (is (= (:table-members-root expected) (claim/bytes->hex table-members-root)))
+    (is (= (:table-root expected) (claim/bytes->hex table-root)))
+    (is (= (:claim-pair expected) (claim/bytes->hex claim-pair)))
+    (is (= (:claim-duplicate-last-node expected) (claim/bytes->hex claim-duplicate-last)))
+    (is (= (:claim-members-root expected) (claim/bytes->hex claim-members-root)))
+    (is (= (:claim-root expected) (claim/bytes->hex claim-root)))
+    (is (= (:table-index-2-siblings expected)
+           [(claim/bytes->hex (nth table-leaves 2)) (claim/bytes->hex table-pair)]))
+    (is (= (:claim-index-2-siblings expected)
+           [(claim/bytes->hex (nth claim-leaves 2)) (claim/bytes->hex claim-pair)]))))
