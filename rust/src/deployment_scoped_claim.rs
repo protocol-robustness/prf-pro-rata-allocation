@@ -26,7 +26,7 @@ pub enum DeploymentScopedClaimError {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeploymentScopedClaimV2 {
     pub chain_id: BigUint,
-    pub chain_instance_identity: [u8; 32],
+    pub chain_instance_genesis_root: [u8; 32],
     pub allocator: [u8; 20],
     pub asset: [u8; 20],
     pub operation_id: [u8; 32],
@@ -85,7 +85,7 @@ fn context_words(
         domain_word(PROFILE_DOMAIN),
         domain_word(leaf_domain),
         uint256_word(&context.chain_id)?,
-        context.chain_instance_identity,
+        context.chain_instance_genesis_root,
         address_word(&context.allocator),
         address_word(&context.asset),
         context.operation_id,
@@ -231,7 +231,7 @@ mod tests {
         (
             DeploymentScopedClaimV2 {
                 chain_id: BigUint::from(value("chain_id").parse::<u32>().unwrap()),
-                chain_instance_identity: bytes32(value("chain_instance_identity")),
+                chain_instance_genesis_root: bytes32(value("chain_instance_genesis_root")),
                 allocator: address(value("allocator")),
                 asset: address(value("asset")),
                 operation_id: bytes32(value("operation_id")),

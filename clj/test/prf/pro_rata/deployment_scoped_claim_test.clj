@@ -12,7 +12,7 @@
       {:status (getv "status")
        :profile (getv "profile")
        :inputs {:chain-id (Long/parseLong (getv "chain_id"))
-                :chain-instance-identity (getv "chain_instance_identity")
+                :chain-instance-genesis-root (getv "chain_instance_genesis_root")
                 :allocator (getv "allocator") :asset (getv "asset")
                 :operation-id (getv "operation_id")
                 :allocation-binding-root (getv "allocation_binding_root")
@@ -36,7 +36,7 @@
 
 (deftest candidate-profile-matches-shared-candidate-vector
   (let [{:keys [status profile inputs expected]} (vector-data)
-        context (select-keys inputs [:chain-id :chain-instance-identity :allocator :asset
+        context (select-keys inputs [:chain-id :chain-instance-genesis-root :allocator :asset
                                      :operation-id :allocation-binding-root :policy-profile
                                      :immutable-minimum-proof-mode])
         opening {:index (:index inputs)
@@ -57,7 +57,7 @@
 
 (deftest deployment-context-and-proof-profile-are-bound
   (let [{:keys [inputs]} (vector-data)
-        context (select-keys inputs [:chain-id :chain-instance-identity :allocator :asset
+        context (select-keys inputs [:chain-id :chain-instance-genesis-root :allocator :asset
                                      :operation-id :allocation-binding-root :policy-profile
                                      :immutable-minimum-proof-mode])
         opening {:index (:index inputs) :claim-identity (:claim-identity inputs)
@@ -65,7 +65,7 @@
                  :opening-salt (:opening-salt inputs)}
         root (claim/entitlement-table-leaf-v2 context opening)]
     (doseq [[field value] [[:chain-id 31338]
-                           [:chain-instance-identity "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+                           [:chain-instance-genesis-root "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
                            [:allocator "0x0000000000000000000000000000000000009999"]
                            [:asset "0x0000000000000000000000000000000000009999"]
                            [:operation-id "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
@@ -79,7 +79,7 @@
 
 (deftest entitlement-fields-and-salt-have-the-declared-commitment-scope
   (let [{:keys [inputs]} (vector-data)
-        context (select-keys inputs [:chain-id :chain-instance-identity :allocator :asset
+        context (select-keys inputs [:chain-id :chain-instance-genesis-root :allocator :asset
                                      :operation-id :allocation-binding-root :policy-profile
                                      :immutable-minimum-proof-mode])
         opening {:index (:index inputs) :claim-identity (:claim-identity inputs)
@@ -107,7 +107,7 @@
 
 (deftest malformed-profile-inputs-fail-closed
   (let [{:keys [inputs]} (vector-data)
-        context (select-keys inputs [:chain-id :chain-instance-identity :allocator :asset
+        context (select-keys inputs [:chain-id :chain-instance-genesis-root :allocator :asset
                                      :operation-id :allocation-binding-root :policy-profile
                                      :immutable-minimum-proof-mode])
         opening {:index (:index inputs) :claim-identity (:claim-identity inputs)

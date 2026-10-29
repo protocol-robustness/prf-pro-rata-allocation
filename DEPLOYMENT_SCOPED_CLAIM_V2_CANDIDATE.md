@@ -20,7 +20,7 @@ The table leaf preimage, in order, is:
 1. `keccak256("prf.pro-rata-entitlement.deployment-scoped.v2")`
 2. `keccak256("prf.pro-rata-entitlement.table-leaf.v2")`
 3. chain ID
-4. chain-instance identity
+4. canonical `chain-instance-genesis.v1` root (SHA-256, 32 bytes)
 5. effective allocator address
 6. asset address
 7. operation ID
@@ -45,12 +45,17 @@ total amount with their respective `table-root.v2` and `claim-root.v2` domains.
 
 ## Trust boundary still unresolved
 
-The candidate commits to chain ID, allocator address and a chain-instance
-identity supplied at construction. Hashing that supplied value does not prove
-it was authenticated or selected by the correct authority. The local EVM
-candidate also binds its actual `address(this)` at execution, while the
-cross-language fixture uses an explicit allocator value to test the preimage.
-No deployment qualification follows from matching these vectors.
+The selected chain value is specifically PRF's `chain-instance-genesis.v1`
+root, whose canonical preimage includes the protocol root, execution and
+settlement chain IDs, control-plane and authority-adapter addresses and code
+hashes, initial authority state, and initial configuration root. The
+standalone contract accepts that root as an opaque constructor value; it does
+not authenticate its source. A deployment adapter must independently derive
+the canonical root, verify it against the sealed genesis contract and bind the
+same value into the operation. The local EVM candidate binds its actual
+`address(this)` at execution, while the cross-language fixture uses an
+explicit allocator value to test the preimage. Matching vectors alone do not
+qualify a deployment.
 
 ## Candidate vector and reproduction
 

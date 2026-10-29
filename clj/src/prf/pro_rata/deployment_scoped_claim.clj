@@ -77,7 +77,7 @@
     [(word-hash (.getBytes profile-domain java.nio.charset.StandardCharsets/UTF_8))
      (word-hash (.getBytes leaf-domain java.nio.charset.StandardCharsets/UTF_8))
      (uint256-word (:chain-id context) :chain-id)
-     (bytes32 (:chain-instance-identity context) :chain-instance-identity)
+     (bytes32 (:chain-instance-genesis-root context) :chain-instance-genesis-root)
      (address-word (:allocator context) :allocator)
      (address-word (:asset context) :asset)
      (bytes32 (:operation-id context) :operation-id)
