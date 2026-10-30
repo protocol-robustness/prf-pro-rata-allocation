@@ -49,10 +49,13 @@ The selected chain value is specifically PRF's `chain-instance-genesis.v1`
 root, whose canonical preimage includes the protocol root, execution and
 settlement chain IDs, control-plane and authority-adapter addresses and code
 hashes, initial authority state, and initial configuration root. The
-standalone contract accepts that root as an opaque constructor value; it does
-not authenticate its source. A deployment adapter must independently derive
-the canonical root, verify it against the sealed genesis contract and bind the
-same value into the operation. The local EVM candidate binds its actual
+standalone contract now requires a sealed genesis interface and an
+independently derived expected root at construction. It checks the live root,
+execution chain ID, and runtime code hash against the sealed contract, then uses
+the root read back from that contract for all commitment checks. The expected
+root must come from PRF's canonical derivation and seal-verification workflow;
+the contract cannot authenticate the provenance of a caller-supplied expected
+root by itself. The local EVM candidate binds its actual
 `address(this)` at execution, while the cross-language fixture uses an
 explicit allocator value to test the preimage. Matching vectors alone do not
 qualify a deployment.
