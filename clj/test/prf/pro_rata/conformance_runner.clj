@@ -6,6 +6,7 @@
             [clojure.test :as test :refer [deftest]]
             [prf.canonical.codec :as codec]
             [prf.pro-rata.api :as api]
+            [prf.pro-rata.rows :as allocation-rows]
             [prf.pro-rata.deployment-scoped-claim-test]
             [prf.pro-rata.identity :as identity]
             [prf.pro-rata.outcome :as outcome]
@@ -19,7 +20,7 @@
   "b863e04a61d0dded845dc3351626ebf57c4d5abea7e18ea19a89cacf4b1ad12a")
 
 (def ^:private allocation-fixture-manifest-sha256
-  "21b541bcc7958f96821927ebe10c16030e0461247afe0dcb82d622e2c4142157")
+  "7c05b8e897c0547149245616f7882488227d06b94b60754abb33a53a3a2a2be7")
 
 (defn- sha256-hex [^bytes bytes]
   (let [digest (.digest (java.security.MessageDigest/getInstance "SHA-256") bytes)]
@@ -41,6 +42,15 @@
                    (.toPath (io/file *fixture-root* path)))]
         (test/is (= sha256 (sha256-hex bytes)) (str "file digest: " path))))
     (test/is (seq (:files manifest)) "allocation fixtures are registered")))
+
+(deftest allocation-row-order-uses-canonical-encoding-bytes
+  (let [row (fn [id] {:row/id id :requested 1 :weight 1})
+        ids (mapv :row/id (allocation-rows/canonical-rows [(row "aa") (row "z")]))
+        unicode-ids (mapv :row/id
+                          (allocation-rows/canonical-rows [(row "\uE000") (row "\uD800\uDC00")]))]
+    (test/is (= ["z" "aa"] ids) "encoded string length determines canonical byte order")
+    (test/is (= ["\uE000" "\uD800\uDC00"] unicode-ids)
+             "canonical UTF-8 byte order is independent of UTF-16 code-unit order")))
 
 (deftest allocation-vectors-match-frozen-roots-and-bytes
   (let [vector-dir (io/file *fixture-root* "vectors")

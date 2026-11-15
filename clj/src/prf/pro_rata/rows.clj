@@ -13,20 +13,11 @@
   (and (integer? value) (not (neg? value))))
 
 (defn canonical-id-key
-  "Return a typed, byte-stable ordering key for an allocation identity."
+  "Return the unsigned canonical encoding bytes used to order allocation identities."
   [identity]
   (try
     (canonical/validate-canonical-value! identity)
-    (letfn [(key* [value]
-              (cond
-                (keyword? value) [:keyword (or (namespace value) "") (name value)]
-                (string? value) [:string value]
-                (vector? value) [:vector (mapv key* value)]
-                (map? value) [:map (mapv #(bit-and (int %) 0xff)
-                                         (canonical/canonical-bytes value))]
-                :else [:scalar (mapv #(bit-and (int %) 0xff)
-                                     (canonical/canonical-bytes value))]))]
-      (key* identity))
+    (mapv #(bit-and (int %) 0xff) (canonical/canonical-bytes identity))
     (catch clojure.lang.ExceptionInfo error
       (invalid! :unsupported-allocation-row-id
                 {:row/id identity :cause (ex-data error)}))))

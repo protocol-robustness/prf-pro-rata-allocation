@@ -1,7 +1,7 @@
 //! Canonical row normalization for the public pro-rata request profile.
 //!
 //! This is the Rust counterpart of `prf.pro-rata.rows/canonical-rows`. It
-//! owns row identity validation, duplicate rejection, typed identity ordering,
+//! owns row identity validation, duplicate rejection, canonical-byte ordering,
 //! and effective-cap derivation. Request-level policy selection and hashing
 //! remain separate.
 
@@ -71,15 +71,6 @@ pub struct NormalizedAllocationRequest {
     pub canonical_request: CanonValue,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum IdentityKey {
-    Keyword(String, String),
-    String(String),
-    Vector(Vec<IdentityKey>),
-    Map(Vec<u8>),
-    Scalar(Vec<u8>),
-}
-
 fn canonical_value_is_valid(value: &CanonValue) -> bool {
     match value {
         CanonValue::Null
@@ -107,33 +98,8 @@ fn canonical_value_is_valid(value: &CanonValue) -> bool {
     }
 }
 
-fn identity_key(value: &CanonValue) -> Result<IdentityKey, RequestNormalizationError> {
-    if !canonical_value_is_valid(value) {
-        return Err(RequestNormalizationError::UnsupportedRowId);
-    }
-    match value {
-        CanonValue::Null => Err(RequestNormalizationError::UnsupportedRowId),
-        CanonValue::Keyword(name) => {
-            let (namespace, local_name) = name
-                .split_once('/')
-                .map(|(namespace, local_name)| (namespace.to_string(), local_name.to_string()))
-                .unwrap_or_else(|| (String::new(), name.clone()));
-            Ok(IdentityKey::Keyword(namespace, local_name))
-        }
-        CanonValue::Str(value) => Ok(IdentityKey::String(value.clone())),
-        CanonValue::Array(items) => Ok(IdentityKey::Vector(
-            items.iter().map(identity_key).collect::<Result<_, _>>()?,
-        )),
-        CanonValue::Map(_) => Ok(IdentityKey::Map(value.encode())),
-        CanonValue::Bool(_) | CanonValue::Int(_) => Ok(IdentityKey::Scalar(value.encode())),
-    }
-}
-
 pub(crate) fn compare_row_ids(left: &CanonValue, right: &CanonValue) -> std::cmp::Ordering {
-    match (identity_key(left), identity_key(right)) {
-        (Ok(left), Ok(right)) => left.cmp(&right),
-        _ => left.encode().cmp(&right.encode()),
-    }
+    left.encode().cmp(&right.encode())
 }
 
 fn non_negative_integer(value: Option<&CanonValue>) -> Option<BigInt> {
@@ -285,8 +251,8 @@ pub fn allocation_request_root(canonical_request: &CanonValue) -> String {
     domain_hash(PROJECTION_ARTIFACT_DOMAIN, &preimage)
 }
 
-/// Validate and normalize rows using the public Clojure request profile's
-/// typed identity order. Nil caps become absent caps; every returned numeric
+/// Validate and normalize rows using unsigned canonical encoding byte order.
+/// Nil caps become absent caps; every returned numeric
 /// field is an arbitrary-precision integer.
 pub fn normalize_rows(
     rows: &[AllocationRowInput],
@@ -311,7 +277,13 @@ pub fn normalize_rows(
 
     let identities = rows
         .iter()
-        .map(|row| identity_key(row.row_id.as_ref().expect("row id checked above")))
+        .map(|row| {
+            let id = row.row_id.as_ref().expect("row id checked above");
+            if !canonical_value_is_valid(id) {
+                return Err(RequestNormalizationError::UnsupportedRowId);
+            }
+            Ok(id.encode())
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     for row in rows {
@@ -502,7 +474,7 @@ mod tests {
     }
 
     #[test]
-    fn rows_use_clojure_typed_identity_order_and_normalize_caps() {
+    fn rows_use_canonical_encoded_identity_order_and_normalize_caps() {
         let rows = vec![
             row(Some(CanonValue::str("a")), amount(5), amount(2), None),
             row(
@@ -520,14 +492,47 @@ mod tests {
         ];
 
         let actual = normalize_rows(&rows).unwrap();
-        assert_eq!(actual[0].row_id, CanonValue::keyword("a/id"));
-        assert_eq!(actual[1].row_id, CanonValue::keyword("z/id"));
-        assert_eq!(actual[2].row_id, CanonValue::str("a"));
-        assert_eq!(actual[0].effective_cap, BigInt::from(2));
-        assert_eq!(actual[1].effective_cap, BigInt::from(7));
-        assert_eq!(actual[2].declared_cap, None);
-        assert_eq!(actual[2].effective_cap, BigInt::from(5));
-        assert_eq!(actual[2].obligation_id, CanonValue::Null);
+        assert_eq!(actual[0].row_id, CanonValue::str("a"));
+        assert_eq!(actual[1].row_id, CanonValue::keyword("a/id"));
+        assert_eq!(actual[2].row_id, CanonValue::keyword("z/id"));
+        assert_eq!(actual[0].declared_cap, None);
+        assert_eq!(actual[0].effective_cap, BigInt::from(5));
+        assert_eq!(actual[0].obligation_id, CanonValue::Null);
+        assert_eq!(actual[1].effective_cap, BigInt::from(2));
+        assert_eq!(actual[2].effective_cap, BigInt::from(7));
+    }
+
+    #[test]
+    fn string_row_ids_follow_canonical_bytes_not_text_collation() {
+        let rows = vec![
+            row(Some(CanonValue::str("aa")), amount(1), amount(1), None),
+            row(Some(CanonValue::str("z")), amount(1), amount(1), None),
+        ];
+        let actual = normalize_rows(&rows).unwrap();
+        assert_eq!(
+            actual.iter().map(|row| &row.row_id).collect::<Vec<_>>(),
+            vec![&CanonValue::str("z"), &CanonValue::str("aa")]
+        );
+
+        let unicode_rows = vec![
+            row(
+                Some(CanonValue::str("\u{e000}")),
+                amount(1),
+                amount(1),
+                None,
+            ),
+            row(
+                Some(CanonValue::str("\u{10000}")),
+                amount(1),
+                amount(1),
+                None,
+            ),
+        ];
+        let actual = normalize_rows(&unicode_rows).unwrap();
+        assert_eq!(
+            actual.iter().map(|row| &row.row_id).collect::<Vec<_>>(),
+            vec![&CanonValue::str("\u{e000}"), &CanonValue::str("\u{10000}")]
+        );
     }
 
     #[test]
