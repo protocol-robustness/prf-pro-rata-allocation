@@ -162,6 +162,13 @@ fn distribution_summary(witness: &AllocationWitness) -> CanonValue {
     ])
 }
 
+fn has_redistribution(witness: &AllocationWitness) -> bool {
+    witness.residual_reason == keyword("no-active-weight")
+        || witness.rounds.iter().any(|round| {
+            value(round, "active-row-ids") != value(round, "newly-cap-constrained-row-ids")
+        })
+}
+
 fn without_diagnostic(value: &CanonValue) -> CanonValue {
     let CanonValue::Map(fields) = value else {
         return value.clone();
@@ -213,7 +220,9 @@ pub fn assemble_result(
     } else {
         keyword("none")
     };
-    let redistribution = if request.redistribution_policy == keyword("unallocated") {
+    let redistribution = if request.redistribution_policy == keyword("unallocated")
+        || !has_redistribution(witness)
+    {
         CanonValue::Null
     } else {
         distribution_summary(witness)
@@ -396,6 +405,48 @@ mod tests {
             "unallocated",
             vec![row("row/b", "ob/b", 5, None), row("row/a", "ob/a", 5, None)],
             "cddb502c6577a1742c029de2f1bfe1e6ef8dedc8491f870c5935c228edab12b8",
+        );
+    }
+
+    #[test]
+    fn all_capped_round_does_not_claim_redistribution_occurred() {
+        let request = normalize_request(&AllocationRequestInput {
+            allocation_id: Some(CanonValue::str("bucket-cap-zero-residual-shortfall-v1")),
+            schema_version: None,
+            mechanism_version: None,
+            available: Some(CanonValue::int(10)),
+            rows: vec![
+                AllocationRowInput {
+                    row_id: Some(CanonValue::str("b")),
+                    obligation_id: Some(CanonValue::str("bucket/b")),
+                    requested: Some(CanonValue::int(10)),
+                    weight: Some(CanonValue::int(1)),
+                    cap: Some(CanonValue::int(3)),
+                },
+                AllocationRowInput {
+                    row_id: Some(CanonValue::str("a")),
+                    obligation_id: Some(CanonValue::str("bucket/a")),
+                    requested: Some(CanonValue::int(10)),
+                    weight: Some(CanonValue::int(1)),
+                    cap: Some(CanonValue::int(2)),
+                },
+            ],
+            rounding_policy: Some(keyword("largest-remainder")),
+            tie_break_policy: Some(keyword("canonical-row-id")),
+            redistribution_policy: Some(keyword("redistribute-cap-excess")),
+        })
+        .unwrap();
+        let request_root = allocation_request_root(&request.canonical_request);
+        let allocation = allocate_normalized(&request);
+        let witness = build_witness(&request);
+        let result = assemble_result(&request, &request_root, &allocation, &witness);
+        assert_eq!(
+            value(&result.value, "redistribution"),
+            Some(&CanonValue::Null)
+        );
+        assert_eq!(
+            result.root,
+            "78ad0177adda7b5a0cbb60e84cc332d0b5b4fff2d7dfb98d7dd5231337400fd5"
         );
     }
 

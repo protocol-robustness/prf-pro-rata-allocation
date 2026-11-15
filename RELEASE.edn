@@ -15,15 +15,15 @@
                               :git/sha "5e2b520feca812b049ba397b7b3681963c66a48c"}]
  :release/conformance {:status :partial
                        :command "clojure -M:conformance"
-                       :tests 9
-                       :assertions 81
+                       :tests 15
+                       :assertions 119
                        :result :passed
                        :frozen-portable-contract-root
                        "b863e04a61d0dded845dc3351626ebf57c4d5abea7e18ea19a89cacf4b1ad12a"
                        :canonical-registry-identity-baseline
                        "e0e33c5ab0f976df2be635124dbc7c0a0bea1619b31af6f3a8d787a3da3c366e"
                        :rust {:command "cargo test --workspace --locked"
-                              :tests 53
+                              :tests 60
                               :result :passed}}
  :release/profile-qualification
  {:rust-allocation-v1 {:status :passed
