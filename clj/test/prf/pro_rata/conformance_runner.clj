@@ -20,7 +20,7 @@
   "b863e04a61d0dded845dc3351626ebf57c4d5abea7e18ea19a89cacf4b1ad12a")
 
 (def ^:private allocation-fixture-manifest-sha256
-  "7c05b8e897c0547149245616f7882488227d06b94b60754abb33a53a3a2a2be7")
+  "971dbd9b78c30b2fbffabf89189087f9226b2c76f6e3be470b464dede25943df")
 
 (defn- sha256-hex [^bytes bytes]
   (let [digest (.digest (java.security.MessageDigest/getInstance "SHA-256") bytes)]
@@ -45,12 +45,16 @@
 
 (deftest allocation-row-order-uses-canonical-encoding-bytes
   (let [row (fn [id] {:row/id id :requested 1 :weight 1})
-        ids (mapv :row/id (allocation-rows/canonical-rows [(row "aa") (row "z")]))
-        unicode-ids (mapv :row/id
-                          (allocation-rows/canonical-rows [(row "\uE000") (row "\uD800\uDC00")]))]
-    (test/is (= ["z" "aa"] ids) "encoded string length determines canonical byte order")
-    (test/is (= ["\uE000" "\uD800\uDC00"] unicode-ids)
-             "canonical UTF-8 byte order is independent of UTF-16 code-unit order")))
+        vectors (->> (slurp (io/file *fixture-root* "vectors/row-id-order-v1.tsv"))
+                     str/split-lines
+                     (remove #(or (str/blank? %) (str/starts-with? % "#"))))]
+    (doseq [line vectors
+            :let [[case-id left right expected-first expected-second]
+                  (str/split line #"\|")
+                  ids (mapv :row/id (allocation-rows/canonical-rows
+                                     [(row left) (row right)]))]]
+      (test/is (= [expected-first expected-second] ids)
+               (str case-id " follows canonical encoding byte order")))))
 
 (deftest allocation-vectors-match-frozen-roots-and-bytes
   (let [vector-dir (io/file *fixture-root* "vectors")

@@ -504,35 +504,33 @@ mod tests {
 
     #[test]
     fn string_row_ids_follow_canonical_bytes_not_text_collation() {
-        let rows = vec![
-            row(Some(CanonValue::str("aa")), amount(1), amount(1), None),
-            row(Some(CanonValue::str("z")), amount(1), amount(1), None),
-        ];
-        let actual = normalize_rows(&rows).unwrap();
-        assert_eq!(
-            actual.iter().map(|row| &row.row_id).collect::<Vec<_>>(),
-            vec![&CanonValue::str("z"), &CanonValue::str("aa")]
+        let vectors = include_str!(
+            "../../clj/test/fixtures/portable-pro-rata-contract/vectors/row-id-order-v1.tsv"
         );
-
-        let unicode_rows = vec![
-            row(
-                Some(CanonValue::str("\u{e000}")),
-                amount(1),
-                amount(1),
-                None,
-            ),
-            row(
-                Some(CanonValue::str("\u{10000}")),
-                amount(1),
-                amount(1),
-                None,
-            ),
-        ];
-        let actual = normalize_rows(&unicode_rows).unwrap();
-        assert_eq!(
-            actual.iter().map(|row| &row.row_id).collect::<Vec<_>>(),
-            vec![&CanonValue::str("\u{e000}"), &CanonValue::str("\u{10000}")]
-        );
+        for line in vectors
+            .lines()
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        {
+            let fields = line.split('|').collect::<Vec<_>>();
+            assert_eq!(fields.len(), 5, "malformed shared row ordering vector");
+            let rows = vec![
+                row(Some(CanonValue::str(fields[1])), amount(1), amount(1), None),
+                row(Some(CanonValue::str(fields[2])), amount(1), amount(1), None),
+            ];
+            let actual = normalize_rows(&rows).unwrap();
+            assert_eq!(
+                actual
+                    .iter()
+                    .map(|row| match &row.row_id {
+                        CanonValue::Str(value) => value.as_str(),
+                        _ => panic!("shared row ordering vector must use string IDs"),
+                    })
+                    .collect::<Vec<_>>(),
+                vec![fields[3], fields[4]],
+                "{}",
+                fields[0]
+            );
+        }
     }
 
     #[test]

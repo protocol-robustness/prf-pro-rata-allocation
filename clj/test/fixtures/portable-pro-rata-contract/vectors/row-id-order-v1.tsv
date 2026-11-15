@@ -1,0 +1,3 @@
+# case|id-a|id-b|expected-first|expected-second
+variable-length|aa|z|z|aa
+supplementary-unicode||𐀀||𐀀
