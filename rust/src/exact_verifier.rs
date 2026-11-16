@@ -714,6 +714,41 @@ mod tests {
     }
 
     #[test]
+    fn canonical_byte_order_breaks_variable_length_string_tie() {
+        let request = request(
+            7.into(),
+            vec![
+                VerificationItem {
+                    id: CanonValue::str("aa"),
+                    weight: 1.into(),
+                    cap: None,
+                },
+                VerificationItem {
+                    id: CanonValue::str("z"),
+                    weight: 1.into(),
+                    cap: None,
+                },
+            ],
+            RoundingPolicy::LargestRemainder,
+            OrderingPolicy::CanonicalId,
+            CapTreatment::Unallocated,
+        );
+        let result = reconstruct(&request).unwrap();
+        let actual: Vec<_> = result
+            .allocations
+            .iter()
+            .map(|row| (row.id.clone(), row.allocated.clone()))
+            .collect();
+        assert_eq!(
+            actual,
+            vec![
+                (CanonValue::str("aa"), BigInt::from(3)),
+                (CanonValue::str("z"), BigInt::from(4)),
+            ]
+        );
+    }
+
+    #[test]
     fn zero_cap_is_committed_then_redistributed() {
         let request = request(
             10.into(),

@@ -56,6 +56,36 @@
       (test/is (= [expected-first expected-second] ids)
                (str case-id " follows canonical encoding byte order")))))
 
+(deftest largest-remainder-ties-use-canonical-encoding-byte-order
+  (let [request {:allocation/id "bucket-variable-length-order-v1"
+                 :available 7
+                 :rounding-policy :largest-remainder
+                 :tie-break-policy :canonical-row-id
+                 :redistribution-policy :unallocated
+                 :rows [{:row/id "aa" :obligation/id "bucket/aa"
+                         :requested 7 :weight 1 :cap nil}
+                        {:row/id "z" :obligation/id "bucket/z"
+                         :requested 7 :weight 1 :cap nil}
+                        {:row/id "zero" :obligation/id "bucket/zero"
+                         :requested 7 :weight 0 :cap nil}]}
+        result (api/allocate request)
+        allocations (into {} (map (juxt :row/id :allocated) (:rows result)))
+        witness-awards (into #{} (comp (filter :remainder-unit-awarded?)
+                                       (map :row/id))
+                             (:rows result))]
+    (test/is (= {"z" 4N "aa" 3N "zero" 0N} allocations)
+             "the shortest canonical string encoding sorts before the longer tie")
+    (test/is (= #{"z"} witness-awards)
+             "the emitted quota witness names the same remainder winner")
+    (test/is (= "d55cf1500f9195aed350ba63085e93413b93e4cae0f339a2c28937ba96a5d55d"
+                (:request/hash result))
+             "the canonical request root is frozen for cross-language comparison")
+    (test/is (= "58f348cbe29875325a87ed4e7ffbc63df470603c7d23a180e7c0b76f86600283"
+                (:allocation/hash result))
+             "the corrected result root is frozen for cross-language comparison")
+    (test/is (true? (api/verify-result request result))
+             "the allocation and its canonical-byte witness agree")))
+
 (deftest allocation-vectors-match-frozen-roots-and-bytes
   (let [vector-dir (io/file *fixture-root* "vectors")
         vector-files (->> (.listFiles vector-dir)

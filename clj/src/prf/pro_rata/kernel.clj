@@ -22,14 +22,15 @@
       :floor-with-largest-remainder
       (let [allocated (reduce +' 0 floors)
             shortage (- amount allocated)
-            remainders (mapv (fn [{:keys [idx id weight]}]
+            remainders (mapv (fn [{:keys [idx id weight ordering-key]}]
                                {:idx idx
                                 :id id
+                                :ordering-key ordering-key
                                 :remainder (mod (* amount weight) total-weight)})
                              prepared)
             tie-key (case ordering-policy
                       :input-order :idx
-                      :canonical-id :id)
+                      :canonical-id :ordering-key)
             remainder-order (->> remainders
                                  (sort-by (juxt (comp - :remainder) tie-key))
                                  (map :idx)

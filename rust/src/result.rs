@@ -478,6 +478,72 @@ mod tests {
     }
 
     #[test]
+    fn variable_length_string_tie_root_matches_clojure_candidate() {
+        let request = normalize_request(&AllocationRequestInput {
+            allocation_id: Some(CanonValue::str("bucket-variable-length-order-v1")),
+            schema_version: None,
+            mechanism_version: None,
+            available: Some(CanonValue::int(7)),
+            rows: vec![
+                AllocationRowInput {
+                    row_id: Some(CanonValue::str("aa")),
+                    obligation_id: Some(CanonValue::str("bucket/aa")),
+                    requested: Some(CanonValue::int(7)),
+                    weight: Some(CanonValue::int(1)),
+                    cap: None,
+                },
+                AllocationRowInput {
+                    row_id: Some(CanonValue::str("z")),
+                    obligation_id: Some(CanonValue::str("bucket/z")),
+                    requested: Some(CanonValue::int(7)),
+                    weight: Some(CanonValue::int(1)),
+                    cap: None,
+                },
+                AllocationRowInput {
+                    row_id: Some(CanonValue::str("zero")),
+                    obligation_id: Some(CanonValue::str("bucket/zero")),
+                    requested: Some(CanonValue::int(7)),
+                    weight: Some(CanonValue::int(0)),
+                    cap: None,
+                },
+            ],
+            rounding_policy: Some(keyword("largest-remainder")),
+            tie_break_policy: Some(keyword("canonical-row-id")),
+            redistribution_policy: Some(keyword("unallocated")),
+        })
+        .unwrap();
+        let request_root = allocation_request_root(&request.canonical_request);
+        let allocation = allocate_normalized(&request);
+        let witness = build_witness(&request);
+        let result = assemble_result(&request, &request_root, &allocation, &witness);
+        assert_eq!(
+            request_root,
+            "d55cf1500f9195aed350ba63085e93413b93e4cae0f339a2c28937ba96a5d55d"
+        );
+        assert_eq!(
+            result.root,
+            "58f348cbe29875325a87ed4e7ffbc63df470603c7d23a180e7c0b76f86600283"
+        );
+        assert_eq!(
+            allocation
+                .rows
+                .iter()
+                .map(|row| (row.row_id.clone(), row.allocated.clone()))
+                .collect::<Vec<_>>(),
+            vec![
+                (CanonValue::str("z"), BigInt::from(4)),
+                (CanonValue::str("aa"), BigInt::from(3)),
+                (CanonValue::str("zero"), BigInt::from(0)),
+            ]
+        );
+        report_vector(
+            "bucket-variable-length-order-v1",
+            &request_root,
+            &result.root,
+        );
+    }
+
+    #[test]
     fn result_verification_checks_semantics_and_root_but_ignores_diagnostic() {
         let request = normalize_request(&AllocationRequestInput {
             allocation_id: Some(CanonValue::keyword("portable/rounding")),

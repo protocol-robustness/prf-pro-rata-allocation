@@ -1,6 +1,7 @@
 (ns prf.pro-rata.single-pass
   "Single-pass allocation semantics with explicit runtime execution callbacks."
-  (:require [prf.pro-rata.kernel :as kernel]))
+  (:require [prf.pro-rata.kernel :as kernel]
+            [prf.pro-rata.rows :as allocation-rows]))
 
 (defn allocate
   "Run one allocation pass using supplied runtime functions.
@@ -40,13 +41,17 @@
         prepared (ordered-detached-mapv
                   claimant-parallelism quiescence-timeout-seconds
                   (fn [[idx item]]
-                    (let [weight (kernel/non-negative-integer (weight-fn item))
+                    (let [id (id-fn item)
+                          weight (kernel/non-negative-integer (weight-fn item))
                           cap-raw (cap-fn item)
                           cap (when (some? cap-raw)
                                 (kernel/non-negative-integer cap-raw))]
                       {:idx idx
                        :item item
-                       :id (id-fn item)
+                       :id id
+                       :ordering-key (case ordering-policy
+                                       :canonical-id (allocation-rows/canonical-id-key id)
+                                       :input-order idx)
                        :weight weight
                        :cap cap}))
                   (mapv vector (range) items))
